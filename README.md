@@ -16,7 +16,7 @@ sudo apt-get install libxtst-dev
 
 ### 1. Download:
 ```
-git clone https://github.com/1stgenrogue/nika-reloaded.git
+git clone https://github.com/needitem/nika-fixed/.git
 ```
 
 ### 2. Get inside the folder
