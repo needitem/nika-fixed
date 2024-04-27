@@ -1,34 +1,31 @@
 #pragma once
 #include "LocalPlayer.hpp"
 #include "Player.hpp"
-
 struct Aim {
-    HitboxType Hitbox = HitboxType::UpperChest;
+    HitboxType Hitbox = HitboxType::LowerChest;
 
     float FinalDistance = 0;
     float FinalFOV = 0;
     float HipfireDistance = 60;
 
-    MyDisplay* X11Display;
-    LocalPlayer* Myself;
-    std::vector<Player*>* Players;
+    MyDisplay* display;
+    LocalPlayer* lp;
+    std::vector<Player*>* players;
     ConfigLoader* cl;
-
     Player* CurrentTarget = nullptr;
     bool TargetSelected = true;
 
-    Aim(MyDisplay* X11Display, LocalPlayer* Myself, std::vector<Player*>* GamePlayers, ConfigLoader* ConfigLoada) {
-        this->X11Display = X11Display;
-        this->Myself = Myself;
-        this->Players = GamePlayers;
-        this->cl = ConfigLoada;    
+    Aim(MyDisplay* myDisplay, LocalPlayer* localPlayer, std::vector<Player*>* all_players, ConfigLoader* ConfigLoada) {
+        this->display = myDisplay;
+        this->lp = localPlayer;
+        this->players = all_players;
+        this->cl = ConfigLoada;   
     }
     void Update(int counter) {
         if (!cl->FEATURE_AIMBOT_ON) { ReleaseTarget(); return; }
-        if (Myself->weaponIndex == 113 || 
-        (Myself->grenadeID == -251)){ ReleaseTarget(); return; }
+        if (lp->grippingGrenade){ ReleaseTarget(); return; }
         
-        if (Myself->inZoom) {
+        if (lp->inZoom) {
             FinalFOV = cl->AIMBOT_FOV;
             FinalDistance = cl->AIMBOT_MAX_DISTANCE;
         }
@@ -37,9 +34,9 @@ struct Aim {
             FinalDistance = HipfireDistance;
         }
 
-        if (!Myself->isCombatReady()) { TargetSelected = false; return; }
-        if (!X11Display->keyDown(cl->AIMBOT_ACTIVATED_BY_BUTTON) && !Myself->inAttack) { ReleaseTarget(); return; }
-
+        if (!lp->isCombatReady()) { TargetSelected = false; return; }
+        if (!display->keyDown(cl->AIMBOT_ACTIVATED_BY_BUTTON) && !lp->inAttack) { ReleaseTarget(); return; }
+        
         Player* Target = CurrentTarget;
         if (!IsValidTarget(Target)) {
             if(TargetSelected && !cl->AIMBOT_ALLOW_TARGET_SWITCH)
@@ -79,7 +76,7 @@ struct Aim {
         float TotalSmooth = cl->AIMBOT_SMOOTH + Extra;
 
         // No recoil calcs
-        Vector2D punchAnglesDiff = Myself->punchAnglesDiff.Divide(cl->AIMBOT_SMOOTH).Multiply(cl->AIMBOT_SPEED);
+        Vector2D punchAnglesDiff = lp->punchAnglesDiff.Divide(cl->AIMBOT_SMOOTH).Multiply(cl->AIMBOT_SPEED);
         double nrPitchIncrement = punchAnglesDiff.x;
         double nrYawIncrement = -punchAnglesDiff.y;
 
@@ -98,11 +95,11 @@ struct Aim {
 
         // Move Mouse
         if (totalPitchIncrementInt == 0 && totalYawIncrementInt == 0) return;
-        X11Display->moveMouseRelative(totalPitchIncrementInt, totalYawIncrementInt);
+        display->moveMouseRelative(totalPitchIncrementInt, totalYawIncrementInt);
     }
 
     bool GetAngle(const Player* Target, QAngle& Angle) {
-        const QAngle CurrentAngle = QAngle(Myself->viewAngles.x, Myself->viewAngles.y).fixAngle();
+        const QAngle CurrentAngle = QAngle(lp->viewAngles.x, lp->viewAngles.y).fixAngle();
         if (!CurrentAngle.isValid())
             return false;
 
@@ -115,18 +112,18 @@ struct Aim {
     bool GetAngleToTarget(const Player* Target, QAngle& Angle) const {
         const Vector3D TargetPosition = Target->GetBonePosition(Hitbox);
         const Vector3D TargetVelocity = Target->AbsoluteVelocity;
-        const Vector3D CameraPosition = Myself->CameraPosition;
-        const QAngle CurrentAngle = QAngle(Myself->viewAngles.x, Myself->viewAngles.y).fixAngle();
+        const Vector3D CameraPosition = lp->CameraPosition;
+        const QAngle CurrentAngle = QAngle(lp->viewAngles.x, lp->viewAngles.y).fixAngle();
         
-        if (Myself->WeaponProjectileSpeed > 1.0f) {
+        if (lp->WeaponProjectileSpeed > 1.0f) {
             if (cl->AIMBOT_PREDICT_BULLETDROP && cl->AIMBOT_PREDICT_MOVEMENT) {
-                return Resolver::CalculateAimRotationNew(CameraPosition, TargetPosition, TargetVelocity, Myself->WeaponProjectileSpeed, Myself->WeaponProjectileScale, 255, Angle);
+                return Resolver::CalculateAimRotationNew(CameraPosition, TargetPosition, TargetVelocity, lp->WeaponProjectileSpeed, lp->WeaponProjectileScale, 255, Angle);
             }
             else if (cl->AIMBOT_PREDICT_BULLETDROP) {
-                return Resolver::CalculateAimRotationNew(CameraPosition, TargetPosition, Vector3D(0, 0, 0), Myself->WeaponProjectileSpeed, Myself->WeaponProjectileScale, 255, Angle);
+                return Resolver::CalculateAimRotationNew(CameraPosition, TargetPosition, Vector3D(0, 0, 0), lp->WeaponProjectileSpeed, lp->WeaponProjectileScale, 255, Angle);
             }
             else if (cl->AIMBOT_PREDICT_MOVEMENT) {
-                return Resolver::CalculateAimRotation(CameraPosition, TargetPosition, TargetVelocity, Myself->WeaponProjectileSpeed, Angle);
+                return Resolver::CalculateAimRotation(CameraPosition, TargetPosition, TargetVelocity, lp->WeaponProjectileSpeed, Angle);
             }
         }
 
@@ -147,7 +144,7 @@ struct Aim {
     }
 
     float CalculatePitchIncrement(QAngle AimbotDesiredAngles) {
-        float wayA = AimbotDesiredAngles.x - Myself->viewAngles.x;
+        float wayA = AimbotDesiredAngles.x - lp->viewAngles.x;
         float wayB = 180 - abs(wayA);
         if (wayA > 0 && wayB > 0)
             wayB *= -1;
@@ -157,7 +154,7 @@ struct Aim {
     }
 
     float CalculateYawIncrement(QAngle AimbotDesiredAngles) {
-        float wayA = AimbotDesiredAngles.y - Myself->viewAngles.y;
+        float wayA = AimbotDesiredAngles.y - lp->viewAngles.y;
         float wayB = 360 - abs(wayA);
         if (wayA > 0 && wayB > 0)
             wayB *= -1;
@@ -167,8 +164,8 @@ struct Aim {
     }
 
     double CalculateDistanceFromCrosshair(Player* target) {
-        Vector3D CameraPosition = Myself->CameraPosition;
-        QAngle CurrentAngle = QAngle(Myself->viewAngles.x, Myself->viewAngles.y).fixAngle();
+        Vector3D CameraPosition = lp->CameraPosition;
+        QAngle CurrentAngle = QAngle(lp->viewAngles.x, lp->viewAngles.y).fixAngle();
 
         Vector3D TargetPos = target->localOrigin;
         if (CameraPosition.Distance(TargetPos) <= 0.0001f)
@@ -184,10 +181,10 @@ struct Aim {
     Player* FindBestTarget() {
         float NearestDistance = 9999;
         Player* BestTarget = nullptr;
-        Vector3D CameraPosition = Myself->CameraPosition;
-        QAngle CurrentAngle = QAngle(Myself->viewAngles.x, Myself->viewAngles.y).fixAngle();
-        for (int i = 0; i < Players->size(); i++) {
-            Player* p = Players->at(i);
+        Vector3D CameraPosition = lp->CameraPosition;
+        QAngle CurrentAngle = QAngle(lp->viewAngles.x, lp->viewAngles.y).fixAngle();
+        for (int i = 0; i < players->size(); i++) {
+            Player* p = players->at(i);
             if (!IsValidTarget(p)) continue;
 
             double DistanceFromCrosshair = CalculateDistanceFromCrosshair(p);

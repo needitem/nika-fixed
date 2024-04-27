@@ -1,5 +1,6 @@
     // v3.0.65.42
-
+    // shook_1_UC
+     
     #pragma once
     // Core
     constexpr long OFF_REGION = 0x140000000; //[Static]->Region

@@ -2,28 +2,31 @@
 struct NoRecoil {
     ConfigLoader* cl;
     MyDisplay* display;
-    Level* level;
-    LocalPlayer* localPlayer;
-
+    Level* map;
+    LocalPlayer* lp;
+    int NoRecPitch;
+    int NoRecYaw;
     Vector2D previous_weaponPunchAngles;
 
-    NoRecoil(ConfigLoader* cl, MyDisplay* display, Level* level, LocalPlayer* localPlayer) {
+    NoRecoil(ConfigLoader* cl, MyDisplay* myDisplay, Level* level, LocalPlayer* localPlayer) {
         this->cl = cl;
-        this->display = display;
-        this->level = level;
-        this->localPlayer = localPlayer;
+        this->display = myDisplay;
+        this->map = level;
+        this->lp = localPlayer;
     }
 
-    void controlWeapon(int counter) {
+    void controlWeapon() {
+        int NoRecPitch = cl->NORECOIL_PITCH_REDUCTION; 
+        int NoRecYaw = cl->NORECOIL_YAW_REDUCTION; 
         if (!cl->FEATURE_NORECOIL_ON)return;
-        if (!localPlayer->isCombatReady()) return;
-        if (!localPlayer->inAttack) return;
-        Vector2D punchAnglesDiff = localPlayer->punchAnglesDiff;
+        if (!lp->isCombatReady()) return;
+        if (!lp->inAttack) return;
+        Vector2D punchAnglesDiff = lp->punchAnglesDiff;
         if (punchAnglesDiff.IsZeroVector()) return;
         int pitch = (punchAnglesDiff.x > 0)
-            ? roundHalfEven(punchAnglesDiff.x * cl->NORECOIL_PITCH_REDUCTION)
+            ? roundHalfEven(punchAnglesDiff.x * NoRecPitch)
             : 0;
-        int yaw = roundHalfEven(-punchAnglesDiff.y * cl->NORECOIL_YAW_REDUCTION);
+        int yaw = roundHalfEven(-punchAnglesDiff.y * NoRecYaw);
         display->moveMouseRelative(pitch, yaw);
     }
 

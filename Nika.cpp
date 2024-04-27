@@ -16,17 +16,15 @@ int main() {
     std::vector<Player*>* players = new std::vector<Player*>;
 
     //fill in slots for players, dummies and items
-    for (int i = 0; i < 70; i++) humanPlayers->push_back(new Player(i, localPlayer));
-    for (int i = 0; i < 15000; i++) dummyPlayers->push_back(new Player(i, localPlayer));
+    for (int i = 0; i < 60; i++) humanPlayers->push_back(new Player(i, localPlayer, cl));
+    for (int i = 0; i < 15000; i++) dummyPlayers->push_back(new Player(i, localPlayer, cl));
 
-    
     //create features     
     NoRecoil* noRecoil = new NoRecoil(cl, display, level, localPlayer);
     TriggerBot* triggerBot = new TriggerBot(cl, display, localPlayer, players);
     Sense* sense = new Sense(cl, level, localPlayer, players);
     Random* randyRandom = new Random(cl, display, level, localPlayer, players);
     Aim* AIM3D = new Aim(display, localPlayer, players, cl);
-
     //begin main loop
     int counter = 0;
     
@@ -42,46 +40,46 @@ int main() {
             level->readFromMemory();
             if (!level->playable) {
                 printf("Player in Lobby - Sleep 35 sec\n");
-                std::this_thread::sleep_for(std::chrono::milliseconds(35000));
+                std::this_thread::sleep_for(std::chrono::seconds(35));
                 continue;
             }
 
             //read localPlayer and make sure he is valid
             localPlayer->readFromMemory();
-            if (!localPlayer->isValid()) throw std::invalid_argument("Select Legend -");
+            if (!localPlayer->isValid()) throw std::invalid_argument("Select Legend");
 
             //read players
             players->clear();
             if (level->trainingArea)
                 for (int i = 0; i < dummyPlayers->size(); i++) {
                     Player* p = dummyPlayers->at(i);
-                    p->readFromMemory(cl);
+                    p->readFromMemory();
                     if (p->isValid()) players->push_back(p);
                 }
             else
                 for (int i = 0; i < humanPlayers->size(); i++) {
                     Player* p = humanPlayers->at(i);
-                    p->readFromMemory(cl);
+                    p->readFromMemory();
                     
                     if (p->isValid()) players->push_back(p);
-                    p->MapRadar(cl, display);
                 }
                 
             //run features       
-            noRecoil->controlWeapon(counter);
+            noRecoil->controlWeapon();
             triggerBot->shootAtEnemy(counter);
             sense->update(counter);
             AIM3D->Update(counter);
             //Random
-            randyRandom->printLevels();
-            randyRandom->quickTurn();
-            randyRandom->superGlide();
-            randyRandom->spectatorView();
-            randyRandom->SkinChange();
+            randyRandom->printLevels(counter);
+            randyRandom->quickTurn(counter);
+            randyRandom->SuperGlide(counter);
+            randyRandom->spectatorView(counter);
+            randyRandom->SkinChange(counter);
+            randyRandom->MapRadar(counter);
 
             //check how fast we completed all the processing and if we still have time left to sleep
             int processingTime = static_cast<int>(util::currentEpochMillis() - startTime);
-            int goalSleepTime = 6; // 16.67ms=60HZ | 6.97ms=144HZ
+            int goalSleepTime = 6.1; // 16.67ms=60HZ | 6.97ms=144HZ
             int timeLeftToSleep = std::max(0, goalSleepTime - processingTime);
             std::this_thread::sleep_for(std::chrono::milliseconds(timeLeftToSleep));
             
@@ -93,12 +91,12 @@ int main() {
             counter = (counter < 1000) ? ++counter : counter = 0;
         }
         catch (std::invalid_argument& e) {
-            printf("[-] %s SLEEPING 5 SEC [-]\n", e.what());
+            printf("[-] %s - SLEEP 5 SEC [-]\n", e.what());
             std::this_thread::sleep_for(std::chrono::seconds(5));
         }
         catch (...) {
-            printf("[-] UNKNOWN ERROR - SLEEPING 1 SEC [-]\n");
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            printf("[-] UNKNOWN ERROR - SLEEP 3 SEC [-]\n");
+            std::this_thread::sleep_for(std::chrono::seconds(3));
         }    
     }
 }
