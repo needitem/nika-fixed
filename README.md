@@ -16,7 +16,7 @@ sudo apt-get install libxtst-dev
 ### 1. Download Repo:
 ```
 Open Linux terminal then type:
-git clone https://github.com/shook1g/its-Nika-Nika
+git clone https://github.com/needitem/its-Nika-Nika
 ```
 
 ### 2. Get inside the folder
